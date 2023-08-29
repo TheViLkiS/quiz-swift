@@ -1,0 +1,88 @@
+import UIKit
+
+// Используй лучше AnyObject вместо class для лучшей совместимостью новыми версиями Свифта
+
+protocol ReaderDelegate: class {
+    func didReadData(data: Data)
+}
+
+class Reader {
+    // Если нет веской причины использовать "!"(а этого почти не случается), лучше обрабатывай опционалы явно(var file: String?). Если в каком-нибудь сценарии будут обращаться к file!, когда она nil, то будет крэш приложения и плохие отзывы в аппсторе
+    var file: String!
+    
+    var output: ReaderDelegate?  // Не забывай weak для избежания retain cycle
+    var readCompleteBlock: (() -> Void)?
+    
+    func read() {
+        
+        let fileUrl = URL(fileURLWithPath: file!)
+        
+        /*
+         проверка на nil и обработка ошибки
+         
+         guard let fileUrl = URL(string: file) else {
+         // что делать в случае, если file = nil
+         return
+         }
+         
+         */
+        
+        let data = try? Data(contentsOf: fileUrl)
+        
+        /*
+         
+         с помощью do-catch так же обрабатываем ошибки
+         
+         do {
+         let data = try Data(contentsOf: fileUrl)
+         self.output?.didReadData(data: data)
+         } catch {
+         обработка ошибки
+         }
+         
+         */
+        
+        self.readCompleteBlock?(); // ";" тут не нужна, старайся не использовать то, что явно не надо
+    }
+}
+
+class orderReader: ReaderDelegate {  // Классы должны начинаться с заглавной буквы
+    
+    public var reader: Reader
+    
+    init(_ file: URL) {
+        self.reader = Reader()
+        self.reader.file = file.absoluteString
+        self.reader.output = self
+        self.reader.readCompleteBlock = {
+            self.didComplete()
+        }
+    }
+    
+    func Read() {  // методы и функции должны начинаться с маленькой буквы
+        self.reader.read()
+    }
+    
+    func didComplete() {
+        print("end of file")
+    }
+    
+    func didReadData(data: Data) {
+        
+        print("\(data)")
+    }
+}
+
+let filePath = Bundle.main.path(forResource: "myOrders.csv", ofType: nil)
+let orderReader = orderReader(URL(fileURLWithPath: filePath!))
+orderReader.Read()
+
+/*
+ Проверь, есть ли файл, перед открытием. + нигде не должно быть "!"
+if let filePath = Bundle.main.path(forResource: "myOrders.csv", ofType: nil) {
+    let orderReader = orderReader(URL(fileURLWithPath: filePath))
+    orderReader.read()
+} else {
+    // Обработай ошибку
+}
+*/
